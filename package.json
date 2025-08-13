@@ -1,0 +1,46 @@
+{
+	"name": "@nan0web/mail",
+	"version": "1.0.0",
+	"description": "Mailing with the nodemailer and nano format and many channels to deliver nicely formatted messages",
+	"type": "module",
+	"main": "./src/index.js",
+	"types": "./types/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./types/index.d.ts",
+			"import": "./src/index.js"
+		}
+	},
+	"scripts": {
+		"build": "tsc",
+		"test": "node --test src/**/*.test.js"
+	},
+	"files": [
+		"src",
+		"types"
+	],
+	"keywords": [
+		"nano",
+		"nan0",
+		"nan0web",
+		"mail",
+		"email",
+		"nodemailer",
+		"node"
+	],
+	"author": "ЯRаСлав YaRaSLove <support@yaro.page>",
+	"license": "ISC",
+	"dependencies": {
+		"nodemailer": "^6.10.1"
+	},
+	"devDependencies": {
+		"@nan0web/db-fs": "workspace:*",
+		"@nan0web/html": "workspace:*",
+		"@nan0web/xml": "workspace:*"
+	},
+	"peerDependencies": {
+		"@nan0web/db-fs": "^1.0.0",
+		"@nan0web/html": "^1.0.0",
+		"@nan0web/xml": "^1.0.0"
+	}
+}
