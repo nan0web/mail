@@ -1,5 +1,8 @@
 import Address from "./Address.js"
 
+/**
+ * @type {Map<string, string[]>}
+ */
 class Target extends Map {
 	static ADDRESS_FIELDS = ["to", "cc", "bcc"]
 
@@ -60,6 +63,17 @@ class Target extends Map {
 			cc: format(this.get('cc')).join(', '),
 			bcc: format(this.get('bcc')).join(', ')
 		}
+	}
+
+	/**
+	 * @returns {string}
+	 */
+	toString() {
+		const output = []
+		this.forEach((value, key) => {
+			output.push([key, value.map(String).join(", ")].join(": "))
+		})
+		return output.join("\n")
 	}
 
 	/**

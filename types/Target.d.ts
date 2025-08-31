@@ -1,4 +1,7 @@
 export default Target;
+/**
+ * @type {Map<string, string[]>}
+ */
 declare class Target extends Map<any, any> {
     static ADDRESS_FIELDS: string[];
     /**
