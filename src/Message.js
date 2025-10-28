@@ -2,7 +2,7 @@ import { Message } from "@nan0web/co"
 import Attachment from './Attachment.js'
 import Address from './Address.js'
 
-class MailMessage extends Message {
+export default class MailMessage extends Message {
 	/** @type {Address} */
 	from
 	/** @type {Address} */
@@ -48,5 +48,3 @@ class MailMessage extends Message {
 		}
 	}
 }
-
-export default MailMessage

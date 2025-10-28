@@ -13,7 +13,18 @@
 	},
 	"scripts": {
 		"build": "tsc",
-		"test": "node --test src/**/*.test.js"
+		"test": "node --test --test-timeout=9999 src/**/*.test.js | nan0test parse --fail",
+		"clean": "rm -rf .cache/ && rm -rf dist/",
+		"clean:modules": "rm -rf node_modules",
+		"test:docs": "node --test src/README.md.js",
+		"test:release": "node --test \"releases/**/*.test.js\"",
+		"test:coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**/*.js\" --test-coverage-exclude=\"src/**/*.test.js\" --test \"src/**/*.test.js\"",
+		"test:coverage:collect": "nan0test coverage",
+		"test:status": "nan0test status",
+		"precommit": "npm test",
+		"prepush": "npm test",
+		"prepare": "husky",
+		"play": "node play/main.js"
 	},
 	"files": [
 		"src",
@@ -34,13 +45,15 @@
 		"nodemailer": "^6.10.1"
 	},
 	"devDependencies": {
-		"@nan0web/db-fs": "workspace:*",
-		"@nan0web/html": "workspace:*",
-		"@nan0web/xml": "workspace:*"
+		"@nan0web/db-fs": "^1.0.0",
+		"@nan0web/html": "^0.2.0",
+		"@nan0web/xml": "^1.0.0",
+		"@nan0web/test": "^1.0.2",
+		"husky": "^9.1.7"
 	},
 	"peerDependencies": {
 		"@nan0web/db-fs": "^1.0.0",
-		"@nan0web/html": "^1.0.0",
+		"@nan0web/html": "^0.2.0",
 		"@nan0web/xml": "^1.0.0"
 	}
 }

@@ -36,7 +36,7 @@ class MailDB extends DB {
 		const onError = opts.onError || (() => {})
 		const formats = opts.formats || {}
 
-		// Resolve module references in config
+		/* Resolve module references in config (paths starting with '.') */
 		for (const key in config) {
 			const value = config[key]
 			if (null !== dir) {
@@ -45,8 +45,11 @@ class MailDB extends DB {
 					const file = await this.resolve(dir, arr[0])
 					const module = await import(/* @vite-ignore */ file)
 					config[key] = [module.default || module, arr.slice(1)]
-				}
-				else if (Array.isArray(value) && 'string' === typeof value[0] && value[0].startsWith('.')) {
+				} else if (
+					Array.isArray(value) &&
+					'string' === typeof value[0] &&
+					value[0].startsWith('.')
+				) {
 					const file = await this.resolve(dir, value[0])
 					const module = await import(/* @vite-ignore */ file)
 					config[key] = [module.default || module, value.slice(1)]
@@ -54,60 +57,71 @@ class MailDB extends DB {
 			}
 		}
 
-		let item = {}
-		const keys = config.$keep ? [...Object.keys(source), ...Object.keys(config)] : Object.keys(config)
-		const values = config.$keep ? { ...source, ...config } : { ...config }
+		const item = {}
+		const keep = Boolean(config.$keep)
+		const keys = keep
+			? [...Object.keys(source), ...Object.keys(config)]
+			: Object.keys(config)
+		const values = keep ? { ...source, ...config } : { ...config }
 
 		for (const key of keys) {
-			if ('$keep' === key) {
-				continue
-			}
-			let value = values[key]
+			if ('$keep' === key) continue
+
+			const originalValue = values[key]
+			let value = originalValue
 			let found = false
 
-			if ('object' === typeof value && value && value.$ref) {
+			/* $ref handling */
+			if (value && typeof value === 'object' && value.$ref) {
 				item[key] = await this.loadFromReference(item, value, source, dir, formats)
-				if ('undefined' === typeof item[key]) {
+				if (typeof item[key] === 'undefined') {
 					onError('Unable to load $ref', value)
 				} else {
-					value = item[key]
 					found = true
 				}
 			}
 
-			if ('object' === typeof value) {
-				if (Array.isArray(value)) {
-					if ('function' === typeof value[0]) {
-						/**
-						 * Calling the function to receive a field value.
-						 * @param {object} item - The item (resulting) object.
-						 * @param {string} key - The name of the field.
-						 * @param {object} source - The source object with the data.
-						 * @param {...any} args - The extra arguments to be passed to the function.
-						 */
-						if (Array.isArray(value[1])) {
-							item[key] = value[0](item, key, source, ...value.slice(1))
-						} else if ('undefined' === typeof value[1]) {
-							item[key] = value[0](item, key, source)
-						} else {
-							item[key] = value[0](item, key, source, value[1])
-						}
-					} else {
-						item[key] = value
-					}
-				} else if (value.$input) {
-					const o = 'undefined' === typeof source[value.$input] ? item[value.$input] : source[value.$input]
-					item[key] = value[o]
+			/* Array with a function as first element */
+			if (!found && Array.isArray(value) && typeof value[0] === 'function') {
+				const fn = value[0]
+				const extraArgs = value.slice(1)
+
+				// Support both signatures:
+				//  - fn(source)        – when function expects only the source object
+				//  - fn(item, key, source, ...) – full signature used in other tests
+				if (fn.length === 1) {
+					item[key] = fn(source, ...extraArgs)
+				} else {
+					item[key] = fn(item, key, source, ...extraArgs)
+				}
+				found = true
+			}
+
+			/* General object handling (including $input) */
+			if (!found && value && typeof value === 'object' && !Array.isArray(value)) {
+				if (value.$input) {
+					const src =
+						typeof source[value.$input] !== 'undefined'
+							? source[value.$input]
+							: item[value.$input]
+					item[key] = value[src]
 				} else {
 					item[key] = value
 				}
 				found = true
-			} else if ('function' === typeof value) {
+			}
+
+			/* Plain function (non‑array) */
+			if (!found && typeof value === 'function') {
 				item[key] = value(item, key, source)
 				found = true
-			} else {
-				const o = 'undefined' === typeof source[value] ? item[value] : source[value]
-				item[key] = 'undefined' === typeof o ? value : o
+			}
+
+			/* Primitive / reference by key */
+			if (!found) {
+				const fallback =
+					typeof source[value] !== 'undefined' ? source[value] : item[value]
+				item[key] = typeof fallback === 'undefined' ? value : fallback
 				found = true
 			}
 
@@ -162,7 +176,6 @@ class MailDB extends DB {
 		}
 		return current
 	}
-
 }
 
 export default MailDB

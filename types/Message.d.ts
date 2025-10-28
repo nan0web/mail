@@ -1,5 +1,4 @@
-export default MailMessage;
-declare class MailMessage extends Message {
+export default class MailMessage extends Message {
     /**
      * @param {object} input
      * @param {string} [input.body]

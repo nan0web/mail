@@ -1,147 +1,261 @@
-# NaN0Web Mail
+# @nan0web/mail
 
-`@nan0web/mail` is a module for sending emails using Nodemailer. It provides a convenient API for Node.js projects and works with the **nano-format** for templating.
+A tiny, type-safe mail helper built on **nodemailer**. It
+provides ready-made classes for addresses, attachments,
+e-mail composition and a tiny DB helper.
 
-## Overview
-
-The package lets you create, format, and send emails with attachments. Recipients can be specified via the `to`, `cc`, and `bcc` fields. HTML templates can contain placeholders that are replaced with runtime data before sending.
+|Package name|[Status](https://github.com/nan0web/monorepo/blob/main/system.md#написання-сценаріїв)|Documentation|Test coverage|Features|Npm version|
+|---|---|---|---|---|---|
+ |[@nan0web/mail](https://github.com/nan0web/mail/) |🟢 `98.0%` |🧪 [English 🏴󠁧󠁢󠁥󠁮󠁧󠁿](https://github.com/nan0web/mail/blob/main/README.md)<br />[Українською 🇺🇦](https://github.com/nan0web/mail/blob/main/docs/uk/README.md) |🟡 `89.4%` |✅ d.ts 📜 system.md 🕹️ playground |— |
 
 ## Installation
 
+How to install with npm?
 ```bash
 npm install @nan0web/mail
 ```
 
-## Usage
+How to install with pnpm?
+```bash
+pnpm add @nan0web/mail
+```
 
-### Creating an email
+How to install with yarn?
+```bash
+yarn add @nan0web/mail
+```
 
+## Usage – Address
+
+Simple value object for e-mail, telephone or any address.
+
+How to create an Address from a string?
 ```js
-import { Address, Attachment, Email, Target, MailDB } from '@nan0web/mail'
+import { Address } from '@nan0web/mail'
+const addr = Address.from("John Doe <john@example.com>")
+console.info(String(addr))
+// John Doe <john@example.com>
+```
+*/
+How to create an Address from an object?
+```js
+import { Address } from '@nan0web/mail'
+const addr = Address.from({ address: "test@example.com", name: "Test User" })
+console.info(String(addr))
+// Test User <test@example.com>
+```
+## Usage – Attachment
 
-// Define recipients
+Build a Nodemailer attachment, placeholders are replaced
+by the `replace` function.
+
+How to create an Attachment and format it for Nodemailer?
+```js
+import { Attachment } from '@nan0web/mail'
+const att = new Attachment({
+	filename: "invoice-{{id}}.pdf",
+	path: "./invoices/{{id}}.pdf",
+	contentDisposition: "inline",
+})
+const formatted = att.formatForNodemailer({ id: "123" })
+console.info(JSON.stringify(formatted))
+// {"filename":"invoice-123.pdf","path":"./invoices/123.pdf","contentDisposition":"inline"}
+```
+## Usage – Email composition
+
+Create an `Email` object, add attachments and render
+it for Nodemailer.
+
+How to build an Email with placeholders and attachments?
+```js
+import { Email, Attachment } from '@nan0web/mail'
+const mail = new Email({
+	subject: "Invoice {{id}}",
+	html: "<p>Dear {{name}}, see attached.</p>",
+	from: "Billing <billing@example.com>",
+	to: "Customer <customer@example.com>",
+	attachments: [
+		{
+			filename: "invoice-{{id}}.pdf",
+			path: "./invoices/{{id}}.pdf",
+		},
+	],
+})
+const formatted = mail.formatForNodemailer({ id: "001", name: "Alice" })
+console.info(JSON.stringify(formatted))
+// {"from":"Billing <billing@example.com>","to":"Customer <customer@example.com>","cc":"","bcc":"","subject":"Invoice 001","html":"<p>Dear Alice, see attached.</p>","attachments":[{"filename":"invoice-001.pdf","path":"./invoices/001.pdf","contentDisposition":"attachment"}]}
+```
+## Usage – Target
+
+Handle multiple recipients: `to`, `cc`, `bcc`.
+
+How to create a Target with multiple recipients?
+```js
+import { Target, Address } from '@nan0web/mail'
+const target = new Target()
+target.add("alice@example.com", "to")
+target.add("bob@example.com", "cc")
+target.add("carol@example.com", "bcc")
+const formatted = target.formatForNodemailer()
+console.info(JSON.stringify(formatted))
+// {"to":"<alice@example.com>","cc":"<bob@example.com>","bcc":"<carol@example.com>"}
+```
+*/
+How to create Target from object?
+```js
+import { Target } from '@nan0web/mail'
 const target = Target.from({
-  to: 'ivan@example.com',
-  cc: 'petr@example.com',
-  bcc: 'admin@example.com'
+	to: ["alice@example.com", "david@example.com"],
+	cc: "bob@example.com",
 })
-
-// Build the email
-const email = new Email({
-  subject: 'Your invoice',
-  html: '<h1>Thank you for your purchase!</h1>',
-  from: 'Shop <info@shop.com>',
-  target
-})
-
-// Add an attachment
-const attachment = new Attachment({
-  filename: 'invoice.pdf',
-  path: '/path/to/invoice.pdf'
-})
-
-email.attach(attachment)
+const formatted = target.formatForNodemailer()
+console.info(JSON.stringify(formatted))
+// {"to":"<alice@example.com>, <david@example.com>","cc":"<bob@example.com>","bcc":""}
 ```
-
-### Sending the email
-
+## Usage – MailDB transformation
+*
+* Turn a raw record into an enriched object.
+*/
+How to transform data with MailDB?
 ```js
-import { mail, createMailer } from '@nan0web/mail'
-
-// Nodemailer transport configuration
-const transportConfig = {
-  host: 'smtp.example.com',
-  port: 587,
-  secure: false, // true for port 465
-  auth: {
-    user: 'username',
-    pass: 'password'
-  }
+import { MailDB } from '@nan0web/mail'
+const db = new MailDB()
+const source = { name: "John Smith", gender: 1, mail: "john@example.com" }
+const config = {
+	formattedName: [item => item.name.split(" ")[0]],
+	genderText: [item => item.gender === 1 ? "male" : "female"],
+	email: { $ref: "mail" },
+	certificateNo: [item => "001"],
 }
-
-// Data for placeholder replacement
-const data = {
-  name: 'Ivan',
-  purchase: 'product 123'
-}
-
-// Send
-mail(email, data, { mailer: createMailer(transportConfig) })
-  .then(info => console.log('Mail sent:', info))
-  .catch(err => console.error('Sending failed:', err))
+const result = await db.transform(source, config, {})
+console.info(JSON.stringify(result))
+// {"formattedName":"John","genderText":"male","email":"john@example.com","certificateNo":"001"}
 ```
+## Usage – Message
 
-## API Documentation
+Build a message with sender, recipient and attachments.
 
-### `Address`
+How to create and use a Message?
+```js
+import { Message, Attachment } from '@nan0web/mail'
+const msg = new Message({
+	body: "test message",
+	from: "sender@example.com",
+	to: "recipient@example.com",
+	attachments: [
+		new Attachment({ filename: "note.txt", content: "Hello!" })
+	]
+})
+console.info(String(msg))
+// 2025-10-28T10:09:11.143Z test message
+console.info(String(msg.from))
+// <sender@example.com>
+console.info(String(msg.to))
+// <recipient@example.com>
+console.info(JSON.stringify(msg.attachments))
+// [{"filename":"note.txt","content":"Hello!","path":"","href":"","httpHeaders":"","contentType":"","contentDisposition":"attachment","cid":"","encoding":"","headers":"","raw":""}]
+```
+## Usage – createMailer
 
-Represents an email address (optionally with a display name).
+Helper that returns a Nodemailer transport.
 
-| Constructor | `new Address({ address, name? })` |
-|------------|-----------------------------------|
-| Properties | `address` – string, `name` – string, `type` – derived (`email`, `url`, `phone`, `tel`, or `address`) |
-| Methods |
-| `toString()` | Returns `"Name <address>"` or `"<address>"` |
-| `toObject([fields])` | Returns an object with the selected fields or all fields (`address`, `name`, `type`) |
-| `static from(source)` | Creates an `Address` from a string like `"John <john@example.com>"`, an object, or returns the source if it is already an instance |
+How to create a Nodemailer transport with createMailer?
+```js
+import { createMailer } from '@nan0web/mail'
+const transport = createMailer({ jsonTransport: true })
+console.info(transport.constructor.name) // ← Mail
+```
+## Usage – send mail
 
-### `Attachment`
+The `mail` function composes everything and sends it.
 
-Represents a file attached to an email.
+How to send an email using the `mail` helper?
+```js
+import { mail, Email } from '@nan0web/mail'
+class DummyMailer {
+	from
+	subject
+	html
+	attachments
+	async sendMail(msg) {
+		Object.assign(this, msg)
+		return { ok: true }
+	}
+}
+const dummy = new DummyMailer()
+const email = new Email({
+	subject: "Hi {{user}}",
+	html: "<p>Hello {{user}}</p>",
+	from: "Me <me@example.com>",
+	to: "You <you@example.com>",
+})
+const data = { user: "Bob" }
+const info = await mail(email, data, { mailer: dummy })
+console.info(info)
+// { ok: true }
+```
+## API reference
 
-| Constructor | `new Attachment({ filename, content?, path?, href?, ... })` |
-|------------|------------------------------------------------------------|
-| Properties | `filename`, `content`, `path`, `href`, `httpHeaders`, `contentType`, `contentDisposition`, `cid`, `encoding`, `headers`, `raw` |
-| Methods |
-| `formatForNodemailer(replacements?, replacer?)` | Returns an object ready for Nodemailer, applying placeholder replacement if needed |
-| `static from(source)` | Returns an `Attachment` instance (creates one if a plain object is supplied) |
+### Address
 
-### `Email`
+* **Properties** `address`, `name`, `type`
 
-The core email object.
+* **Methods** `toString()`, `toObject()`, static `from()`
 
-| Constructor | `new Email({ subject, html, fields, from, to, target, style, dir, attachments })` |
-|------------|-----------------------------------------------------------------------------------|
-| Properties | `subject`, `html`, `fields`, `from` (`Address`), `target` (`Target`), `style`, `dir`, `attachments` (array of `Attachment`) |
-| Methods |
-| `attach(attachment)` | Adds a single `Attachment` or an array of them |
-| `formatForNodemailer(replacements?, replacer?)` | Produces the object expected by Nodemailer, with placeholder replacement |
-| `static from(source)` | Returns an existing `Email` or creates a new one from a plain object |
+### Attachment
 
-### `Target`
+* **Properties** `filename`, `content`, `path`, `href`, `httpHeaders`, `contentType`, `contentDisposition`, `cid`, `encoding`, `headers`, `raw`
 
-Handles the email recipients.
+* **Methods** `formatForNodemailer()`, static `from()`
 
-| Constructor | `new Target()` |
-|------------|-----------------|
-| Methods |
-| `add(address, type = 'to')` | Adds a single address or an array to the specified field (`to`, `cc`, `bcc`) |
-| `addObject(item)` | Adds addresses from an object, another `Target`, or a single address |
-| `formatForNodemailer()` | Returns `{ to, cc, bcc }` formatted for Nodemailer |
-| `static from(source)` | Creates a `Target` from a string, array, or object containing address information |
+### Email
 
-### `MailDB`
+* **Properties** `subject`, `html`, `from`, `target`, `attachments`, `text`, `style`, `dir`, `fields`
 
-A file‑system based DB (extends `@nan0web/db-fs`). It provides:
+* **Methods** `attach()`, `formatForNodemailer()`, static `from()`
 
-* `transform(source, config, opts)` – flexible data transformation based on a configuration object.
-* `findNestedElement(key, obj)` – utility to get nested values using dot notation.
-* Standard `get`, `loadDocument`, and `resolve` methods inherited from the base DB class.
+### Target
 
-### `Message`
+* **Methods** `add()`, `addObject()`, `formatForNodemailer()`, `toString()`, static `from()`
 
-A lightweight wrapper around `Address` and `Attachment` for generic messages (used by `@nan0web/co`). It offers the same `attach` logic as `Email`.
+### Message
 
-### Helpers
+* **Properties** `body`, `time`, `from`, `to`, `dir`, `attachments`
 
-* `replace(template, data, escaper?)` – Replaces `{{key}}` placeholders in strings.
-* `createMailer(transportConfig)` – Creates a Nodemailer transport (implementation lives in the package entry point).
-* `mail(email, data, opts)` – Sends an `Email` instance using the provided transport and data for placeholders.
+* **Methods** `attach()`, static `from()`
+
+### MailDB
+
+* **Methods** `transform()`, `loadFromReference()`, static `findNestedElement()`
+
+### createMailer
+
+Returns a Nodemailer transport.
+@param {object} trasportConfig The nodemailer config
+
+### mail
+
+Sends a composed email.
+@param {Email} email Email instance
+@param {object} data Data to fill placeholders
+@param {object} opts Options like mailer and htmlEol
+
+All exported symbols are defined
+
+## Java•Script
+
+Uses `d.ts` files for autocompletion
+
+## Playground
+
+Run a quick experiment.
+
+How to run the playground script?
+
+## Contributing
+
+How to contribute? - [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## License
 
-[ISC](./LICENSE)
-
-## Contribution
-
-- [Join and contribute](./CONTRIBUTING.md)
+How to use license? - [LICENSE](./LICENSE)
