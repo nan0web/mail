@@ -39,7 +39,7 @@
 		"nodemailer",
 		"node"
 	],
-	"author": "ЯRаСлав YaRaSLove <support@yaro.page>",
+	"author": "YaRaSLove (ЯRаСлав) <support@yaro.page>",
 	"license": "ISC",
 	"dependencies": {
 		"nodemailer": "^6.10.1"
